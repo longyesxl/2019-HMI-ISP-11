@@ -1,12 +1,21 @@
-import requests
+#import requests
 import sys
 from json import JSONDecoder
 import cv2
 import os
 from sys import platform
 import time
+import serial #导入模块
+
 
 # Import Openpose (Windows/Ubuntu/OSX)
+def limitit(data,maxd,mind):
+    if data>maxd:
+        return maxd
+    elif data<mind:
+        return mind
+    else :
+        return data
 dir_path = os.path.dirname(os.path.realpath(__file__))
 try:
     # Windows Import
@@ -40,6 +49,13 @@ handRectangles = [
         op.Rectangle(160., 80., 320., 320.),
         ]
 ]
+portx="COM4"
+  #波特率，标准值之一：50,75,110,134,150,200,300,600,1200,1800,2400,4800,9600,19200,38400,57600,115200
+bps=9600
+  #超时设置,None：永远等待操作，0为立即返回请求结果，其他值为等待超时时间(单位为秒）
+timex=5
+  # 打开串口，并得到串口对象
+ser=serial.Serial(portx,bps,timeout=timex)
 pointpair=[[20,19],
 [19,18],
 [18,17],
@@ -85,8 +101,32 @@ while True:
             pt2=datum.handKeypoints[1][0][pair[1]]
             ptt1=(int(pt1[0]),int(pt1[1]))
             ptt2=(int(pt2[0]),int(pt2[1]))
-            cv2.line(frame,ptt1,ptt2,(0,255,0),2)    
+            cv2.line(frame,ptt1,ptt2,(0,255,0),2)   
+        pp=datum.handKeypoints[1][0]
+        l1s=pp[20][1]-pp[17][1]
+        l1x=pp[17][1]-pp[0][1]
+        l1=l1s/l1x
+        l2s=pp[16][1]-pp[13][1]
+        l2x=pp[13][1]-pp[0][1]
+        l2=l2s/l2x
+        l3s=pp[12][1]-pp[9][1]
+        l3x=pp[9][1]-pp[0][1]
+        l3=l3s/l3x
+        l4s=pp[8][1]-pp[5][1]
+        l4x=pp[5][1]-pp[0][1]
+        l4=l4s/l4x
+        l5s=pp[4][0]-pp[2][0]
+        l5x=pp[2][0]-pp[0][0]
+        l5=l5s/l5x
+        l1i=int(limitit(l1,1.1,0)*1000+900)
+        l2i=int(limitit(l2,1.5,0)*666+950)
+        l3i=int(limitit(l3,1.5,0)*666+950)
+        l4i=int(limitit(l4,1.2,0)*833+950)
+        l5i=int(2000-limitit(l5,0.8,0)*1375)
+        print(l1,l2,l3,l4,l5)
+        Uart_buf = bytearray([0x55,0x55,0x14, 0x03 ,0x05,0x00,0x01,0x01,l5i & 0x00ff,(l5i  & 0xff00) >>8,0x02,l4i & 0x00ff,(l4i  & 0xff00) >>8,0x03,l3i & 0x00ff,(l3i  & 0xff00) >>8,0x04,l2i & 0x00ff,(l2i  & 0xff00) >>8,0x05,l1i & 0x00ff,(l1i  & 0xff00) >>8 ])
+        result=ser.write(Uart_buf)
     cv2.imshow("capture", frame)
     cv2.waitKey(1)
     ed=time.time()
-    print(ed-st)
+    #print(ed-st)
